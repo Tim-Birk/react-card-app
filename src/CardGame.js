@@ -1,30 +1,51 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Card from './Card';
+import './CardGame.css';
+import { getRandBetweenNegPos } from './helpers';
 import axios from 'axios';
 
 const CardGame = () => {
-  const [deckId, setDeckId] = useState('');
-  const [card, setCard] = useState({});
+  const [deck, setDeck] = useState('');
+  const [cards, setCards] = useState([]);
+  const btnRef = useRef();
 
-  const getDeckId = async () => {
-    const response = await axios.get(
-      'https://deckofcardsapi.com/api/deck/new/shuffle/?deck_count=1'
-    );
+  // on first load get data for a new deck
+  useEffect(() => {
+    const getDeck = async () => {
+      const response = await axios.get(
+        'https://deckofcardsapi.com/api/deck/new/shuffle/?deck_count=1'
+      );
 
-    setDeckId(response.data.deck_id);
-  };
+      setDeck(response.data);
+    };
+    getDeck();
+  }, []);
 
+  // draw a new card from the deck
   const drawCard = async () => {
     const response = await axios.get(
-      `https://deckofcardsapi.com/api/deck/${deckId}/draw/?count=1`
+      `https://deckofcardsapi.com/api/deck/${deck.deck_id}/draw/?count=1`
     );
-    const newCard = response.data.cards[0];
-    setCard(newCard);
-  };
 
-  useEffect(() => {
-    getDeckId();
-  }, []);
+    // update the cards remaining in the deck state
+    setDeck((d) => ({ ...d, remaining: response.data.remaining }));
+
+    // get new card from api response
+    const newCard = response.data.cards[0];
+
+    // if no more cards alert user and disable button
+    if (!newCard) {
+      btnRef.current.disabled = true;
+      alert('Error: no cards remaining!');
+      return;
+    }
+
+    // add new card to cards state with angle to style css with (and keep track for across renders)
+    setCards((oldCards) => [
+      ...oldCards,
+      { ...newCard, angle: getRandBetweenNegPos() },
+    ]);
+  };
 
   const handleClick = () => {
     drawCard();
@@ -32,7 +53,21 @@ const CardGame = () => {
 
   return (
     <>
-      <button onClick={handleClick}>GIMME A CARD!</button>
+      <button onClick={handleClick} ref={btnRef}>
+        GIMME A CARD!
+      </button>
+      <div className='card-pile'>
+        {deck &&
+          cards.map((card) => (
+            <Card
+              key={`${card.value}-${card.suit}`}
+              image={card.image}
+              value={card.value}
+              suit={card.suit}
+              angle={card.angle}
+            />
+          ))}
+      </div>
     </>
   );
 };
