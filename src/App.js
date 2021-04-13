@@ -1,9 +1,10 @@
 import './App.css';
+import CardGame from './CardGame';
 
 function App() {
   return (
     <div className='App'>
-      <h1>Deck of Cards App</h1>
+      <CardGame />
     </div>
   );
 }
