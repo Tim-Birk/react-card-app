@@ -7,6 +7,7 @@ import axios from 'axios';
 const CardGame = () => {
   const [deck, setDeck] = useState('');
   const [cards, setCards] = useState([]);
+  const [activeDraw, setActiveDraw] = useState(false);
   const btnRef = useRef();
 
   // on first load get data for a new deck
@@ -21,40 +22,53 @@ const CardGame = () => {
     getDeck();
   }, []);
 
-  // draw a new card from the deck
-  const drawCard = async () => {
-    const response = await axios.get(
-      `https://deckofcardsapi.com/api/deck/${deck.deck_id}/draw/?count=1`
-    );
+  useEffect(() => {
+    // draw a new card from the deck
+    const drawCard = async () => {
+      if (!activeDraw) {
+        return;
+      }
+      const response = await axios.get(
+        `https://deckofcardsapi.com/api/deck/${deck.deck_id}/draw/?count=1`
+      );
 
-    // update the cards remaining in the deck state
-    setDeck((d) => ({ ...d, remaining: response.data.remaining }));
+      // update the cards remaining in the deck state
+      setDeck((d) => ({ ...d, remaining: response.data.remaining }));
 
-    // get new card from api response
-    const newCard = response.data.cards[0];
+      // get new card from api response
+      const newCard = response.data.cards[0];
 
-    // if no more cards alert user and disable button
-    if (!newCard) {
-      btnRef.current.disabled = true;
-      alert('Error: no cards remaining!');
-      return;
-    }
+      // if no more cards alert user and disable button
+      if (!newCard) {
+        btnRef.current.disabled = true;
+        setActiveDraw(false);
+        alert('Error: no cards remaining!');
+        return;
+      }
 
-    // add new card to cards state with angle to style css with (and keep track for across renders)
-    setCards((oldCards) => [
-      ...oldCards,
-      { ...newCard, angle: getRandBetweenNegPos() },
-    ]);
-  };
+      // add new card to cards state with angle to style css with (and keep track for across renders)
+      setCards((oldCards) => [
+        ...oldCards,
+        { ...newCard, angle: getRandBetweenNegPos() },
+      ]);
+    };
+    const intervalId = setInterval(() => {
+      drawCard();
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [activeDraw, deck.deck_id]);
 
   const handleClick = () => {
-    drawCard();
+    setActiveDraw((currentState) => !currentState);
   };
 
   return (
     <>
       <button onClick={handleClick} ref={btnRef}>
-        GIMME A CARD!
+        {`${activeDraw ? 'Stop ' : 'Start'} Drawing`}
       </button>
       <div className='card-pile'>
         {deck &&
